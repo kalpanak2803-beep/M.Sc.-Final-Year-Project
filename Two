@@ -1,0 +1,231 @@
+import google.generativeai as genai
+from PIL import Image
+import os
+import datetime
+# Configure API
+genai.configure(api_key="AIzaSyDxrRjOQV9UeK36d2TPFD5TIEzgw_vCbzw")
+
+def get_working_model():
+    for m in genai.list_models():
+        if "generateContent" in m.supported_generation_methods:
+            print("Using model:", m.name)
+            return genai.GenerativeModel(m.name)
+    raise Exception("No usable model found")
+
+model = get_working_model()
+
+def inscription_leaf_process(path, output_folder):
+    try:
+        # Open the image
+        image = Image.open(path)
+        
+        # STEP 1: Text extraction from stone inscription
+        extract_prompt = """
+        Analyze this ancient Tamil stone inscription image.
+        Extract ALL visible Tamil text characters accurately.
+        Preserve the original Tamil script exactly as it appears.
+        Include any numbers, symbols, or special characters.
+        
+        Format the output as:
+        === STONE INSCRIPTION TEXT ===
+        [Extracted Tamil text here]
+        
+        Note: If some characters are unclear or damaged, mark them with [?]
+        """
+        
+        response1 = model.generate_content([extract_prompt, image])
+        extracted_text = response1.text
+        
+        # Save extracted text
+        txt_file = os.path.join(output_folder, "extracted_inscription.txt")
+        with open(txt_file, "w", encoding="utf-8") as f:
+            f.write(extracted_text)
+        
+        print("✅ Inscription text extracted")
+        
+        # STEP 2: Translation and explanation
+        explain_prompt = f"""
+        Analyze this ancient Tamil stone inscription text.
+        
+        1. Translate the text to modern Tamil
+        2. Explain its historical significance
+        3. Identify the probable time period
+        4. Note any royal names or historical references
+        5. Explain the purpose (donation, victory, construction, etc.)
+        
+        Text to analyze:
+        {extracted_text}
+        
+        Format your response clearly with sections.
+        """
+        
+        response2 = model.generate_content(explain_prompt)
+        analysis_text = response2.text
+        
+        # Save as HTML
+        save_as_html(analysis_text, os.path.join(output_folder, "output_text1.html"))
+        
+        # Save analysis text
+        analysis_file = os.path.join(output_folder, "inscription_analysis.txt")
+        with open(analysis_file, "w", encoding="utf-8") as f:
+            f.write(analysis_text)
+        
+        print("✅ Inscription analysis completed")
+        print("\n" + "="*50)
+        print("INSCRIPTION ANALYSIS SUMMARY:")
+        print("="*50)
+        print(analysis_text[:500] + "..." if len(analysis_text) > 500 else analysis_text)
+        
+        return {
+            'success': True,
+            'extracted_text': extracted_text,
+            'analysis': analysis_text,
+            'html_file': 'output_text1.html'
+        }
+        
+    except Exception as e:
+        print(f"❌ Error processing inscription: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def save_as_html(content, filename):
+    html_template = f"""<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>தமிழ்க் கல்வெட்டு பகுப்பாய்வு - Tamil Inscription Analysis</title>
+    <style>
+        body {{
+            font-family: 'Noto Serif Tamil', 'Latha', 'Tamil Sangam MN', serif;
+            background-color: #f5f5dc;
+            color: #2c1810;
+            padding: 40px;
+            line-height: 1.8;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-image: url('https://via.placeholder.com/1200x800/cc9966/ffffff?text=Ancient+Stone+Texture');
+            background-size: cover;
+            background-attachment: fixed;
+            background-blend-mode: overlay;
+            background-color: rgba(245, 245, 220, 0.9);
+        }}
+        
+        .container {{
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 2px solid #8B4513;
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px double #8B4513;
+            padding-bottom: 20px;
+        }}
+        
+        h1 {{
+            color: #8B4513;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }}
+        
+        .tamil-title {{
+            font-size: 3rem;
+            color: #c0392b;
+            margin-bottom: 20px;
+        }}
+        
+        .content-section {{
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #fffaf0;
+            border-radius: 10px;
+            border-left: 5px solid #8B4513;
+        }}
+        
+        .section-title {{
+            color: #8B4513;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #d4a76a;
+        }}
+        
+        .tamil-text {{
+            font-size: 1.2rem;
+            line-height: 2;
+            text-align: justify;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #d4a76a;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }}
+        
+        .timestamp {{
+            text-align: right;
+            color: #666;
+            font-style: italic;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }}
+        
+        .ai-badge {{
+            background: linear-gradient(45deg, #c0392b, #e74c3c);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }}
+        
+        @media print {{
+            body {{
+                background: white;
+            }}
+            .container {{
+                box-shadow: none;
+                border: none;
+            }}
+        }}
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Tamil:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="ai-badge">
+                AI-Powered Tamil Inscription Analysis
+            </div>
+            <div class="tamil-title">தமிழ்க் கல்வெட்டு பகுப்பாய்வு</div>
+            <h1>Ancient Tamil Stone Inscription Analysis</h1>
+            <p>Powered by Gemini AI • AI Tamil Heritage Restoration Project</p>
+        </div>
+        
+        <div class="content-section">
+            <div class="section-title">📜 கல்வெட்டு பகுப்பாய்வு முடிவுகள் | Analysis Results</div>
+            <div class="tamil-text">
+                {content}
+            </div>
+        </div>
+        
+        <div class="timestamp">
+            பகுப்பாய்வு நேரம்: { print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}
+            <br>
+            Generated by AI Tamil Restoration System
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(html_template)
