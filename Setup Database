@@ -1,0 +1,94 @@
+import mysql.connector
+
+def setup_database():
+    try:
+        # Connect to MySQL server
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="",
+            auth_plugin='mysql_native_password'
+        )
+        
+        cursor = connection.cursor()
+        
+        # Create database
+        cursor.execute("CREATE DATABASE IF NOT EXISTS tamil_restoration_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+        print("✅ Database created or already exists")
+        
+        # Use the database
+        cursor.execute("USE tamil_restoration_db")
+        
+        # Create users table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users(
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                email VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_login DATETIME,
+                status ENUM('active', 'inactive') DEFAULT 'active'
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        print("✅ Users table created")
+        
+        # Create history table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS history(
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                artifact_type VARCHAR(50) NOT NULL,
+                original_filename VARCHAR(255),
+                result_filename VARCHAR(255),
+                processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                status VARCHAR(50),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        print("✅ History table created")
+        
+        # Create user_activities table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_activities(
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                activity_type VARCHAR(50),
+                description TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        print("✅ User activities table created")
+        
+        # Add a test user (optional)
+        try:
+            import hashlib
+            test_password = hashlib.sha256("test123".encode()).hexdigest()
+            cursor.execute(
+                "INSERT IGNORE INTO users (name, email, password) VALUES (%s, %s, %s)",
+                ("Test User", "test@example.com", test_password)
+            )
+            print("✅ Test user created (email: test@example.com, password: test123)")
+        except:
+            pass
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        print("\n✅ Database setup completed successfully!")
+        print("📊 Database: tamil_restoration_db")
+        print("👥 Tables: users, history, user_activities")
+        print("🔑 Test user: test@example.com / test123")
+        
+    except mysql.connector.Error as err:
+        print(f"❌ Error: {err}")
+        print("\n💡 Troubleshooting tips:")
+        print("1. Make sure MySQL is running")
+        print("2. Check if MySQL root password is correct")
+        print("3. Try running: mysql -u root -p")
+        print("4. If you have a MySQL password, update the password in app.py")
+
+if __name__ == "__main__":
+    setup_database()
