@@ -1,0 +1,108 @@
+import google.generativeai as genai
+from PIL import Image
+import os
+
+# -----------------------------
+# Configure API
+# -----------------------------
+genai.configure(api_key="AIzaSyDxrRjOQV9UeK36d2TPFD5TIEzgw_vCbzw")
+
+def get_working_model():
+    for m in genai.list_models():
+        if "generateContent" in m.supported_generation_methods:
+            print("Using model:", m.name)
+            return genai.GenerativeModel(m.name)
+    raise Exception("No usable model found")
+
+model = get_working_model()
+
+# ✅ USE VISION MODEL (IMPORTANT)
+#model = genai.GenerativeModel("gemini-pro-vision")
+
+# -----------------------------
+# Load Image
+# -----------------------------
+def palm_leaf_process(path,path1):
+    image = Image.open("36.jpg")  # உங்கள் image path
+
+    # -----------------------------
+    # STEP 1: TEXT EXTRACTION
+    # -----------------------------
+    extract_prompt = """
+
+
+    வடிவம்:
+    === EXTRACTED TEXT ===
+    """
+
+    response1 = model.generate_content([extract_prompt, image])
+    extracted_text = response1.text
+
+    with open("extracted_text.txt", "w", encoding="utf-8") as f:
+     f.write(extracted_text)
+
+    print("✅ Text extracted")
+
+    # -----------------------------
+    # STEP 2: SIMPLE TAMIL EXPLANATION
+    # -----------------------------
+    explain_prompt = f"""
+    கீழே உள்ள பனை ஓலை எழுத்தின் பொருளை
+    எளிய தமிழில் விளக்கவும்.
+
+    - சாதாரண மக்களுக்கு புரியும் மாதிரி
+    - இது எதைப் பற்றி? (மருத்துவம் / ஜோதிடம் / மந்திரம் / தர்மம்)
+    - சுருக்கமாக
+
+    TEXT:
+    {extracted_text}
+    """
+
+    response2 = model.generate_content(explain_prompt)
+    simple_tamil = response2.text
+    save_as_html(simple_tamil, "static/palmupload/output_text.html")
+    with open("simple_tamil_explanation.txt", "w", encoding="utf-8") as f:
+     f.write(simple_tamil)
+
+    print("✅ Simple Tamil explanation saved\n")
+    print(simple_tamil)
+
+
+def save_as_html(content, filename="static/palmupload/output_text.html"):
+    html_template = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Extracted Palm Leaf Manuscript</title>
+    <style>
+        body {{
+            font-family: "Noto Serif", "Times New Roman", serif;
+            background-color: #f8f5f0;
+            color: #2b2b2b;
+            padding: 40px;
+        }}
+        pre {{
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 16px;
+            line-height: 1.6;
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }}
+        h1 {{
+            text-align: center;
+        }}
+    </style>
+</head>
+<body>
+    <h1>Extracted Manuscript Text</h1>
+    <pre>{content}</pre>
+</body>
+</html>
+
+"""
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(html_template)
+
+
