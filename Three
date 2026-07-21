@@ -1,0 +1,35 @@
+from diffusers import StableDiffusionImg2ImgPipeline
+from PIL import Image
+import torch
+def restore_sculpture(path,path1):
+    pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+        "runwayml/stable-diffusion-v1-5"
+    )
+
+    pipe.to("cpu")   # GPU இருந்தால்: "cuda"
+
+    init_image = Image.open(path).convert("RGB")
+    init_image = init_image.resize((512, 512))
+
+    prompt = """
+    Ancient stone sculpture restoration,
+    reconstructed broken head,
+    smooth marble texture,
+    classical facial symmetry,
+    museum quality restoration,
+    realistic lighting,
+    high detail
+    """
+
+
+    result = pipe(
+        prompt=prompt,
+        image=init_image,
+        strength=0.75,          # how much to change the image
+        guidance_scale=7.5,
+        num_inference_steps=30
+    ).images[0]
+
+
+    result.save("static/stoneupload/restored_sculpture.png")
+    print("✅ Restored image saved as restored_sculpture.png")
